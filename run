@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASEDIR="$HOME/git/spl-test-reachability"
+BASEDIR=`pwd`
 SRC_DIR="$BASEDIR/src-subjects"
 INPUT="$SRC_DIR/Sudoku"
 OUTPUT="$SRC_DIR/Out_Sudoku"
@@ -14,13 +14,15 @@ java -jar antenna.jar ${INPUT} ${OUTPUT} BASE STATES UNDO SOLVER GENERATOR EXTEN
 
 echo "...compiling output"
 JAVA_FILES=`find ${OUTPUT} -name "*.java"`
-javac -nowarn -d ${OUTPUT}/bin -cp ${OUTPUT}/bin ${JAVA_FILES}
 
+BINDIR="${OUTPUT}/bin"
+mkdir -p ${BINDIR}
+javac -nowarn -d ${BINDIR} -cp ${BINDIR} ${JAVA_FILES}
  
 #echo "...compiling test"
-#javac -d ${OUTPUT}/bin -sourcepath src -cp ${OUTPUT}/bin ${TEST_CLASS}
+#javac -d ${BINDIR} -sourcepath src -cp ${BINDIR} ${TEST_CLASS}
 
 echo "...running test"
-java -cp ${OUTPUT}/bin ${TEST_PATH} 2 > ${OUTPUT}/log_test2.txt
+java -cp ${BINDIR} ${TEST_PATH} 2 > ${OUTPUT}/log_test2.txt
 
  
