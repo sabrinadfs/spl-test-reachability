@@ -1,0 +1,26 @@
+#!/bin/bash
+
+BASEDIR="$HOME/git/spl-test-reachability"
+SRC_DIR="$BASEDIR/src-subjects"
+INPUT="$SRC_DIR/Sudoku"
+OUTPUT="$SRC_DIR/Out_Sudoku"
+#FEATURES="BASE STATES UNDO"
+TEST_CLASS="src-subjects/Out_Sudoku/src-tests/sudoku/main/tests/TestAll.java"
+TEST_PATH="sudoku.main.tests.TestAll"
+
+echo "...running preprocessor"
+echo "${INPUT} ${OUTPUT} BASE STATES UNDO"
+java -jar antenna.jar ${INPUT} ${OUTPUT} BASE STATES UNDO SOLVER GENERATOR EXTENDED_SUDOKU
+
+echo "...compiling output"
+JAVA_FILES=`find ${OUTPUT} -name "*.java"`
+javac -nowarn -d ${OUTPUT}/bin -cp ${OUTPUT}/bin ${JAVA_FILES}
+
+ 
+#echo "...compiling test"
+#javac -d ${OUTPUT}/bin -sourcepath src -cp ${OUTPUT}/bin ${TEST_CLASS}
+
+echo "...running test"
+java -cp ${OUTPUT}/bin ${TEST_PATH} 2 > ${OUTPUT}/log_test2.txt
+
+ 
