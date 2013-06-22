@@ -10,12 +10,18 @@ TEST_PATH="sudoku.main.tests.TestAll"
 
 echo "...running preprocessor"
 echo "${INPUT} ${OUTPUT} BASE STATES UNDO"
-java -jar antenna.jar ${INPUT} ${OUTPUT} BASE STATES UNDO SOLVER GENERATOR EXTENDED_SUDOKU
+
+cd src/antenna/
+ant compile_v3
+cd ../..
+#java -jar antenna.jar ${INPUT} ${OUTPUT} BASE STATES UNDO SOLVER GENERATOR EXTENDED_SUDOKU
+java -cp src/antenna/bin:src/antenna/lib/antlr-3.0.1.jar:src/antenna/lib/commons-io-1.0.jar main.PreProcessMain ${INPUT} ${OUTPUT} BASE STATES UNDO SOLVER GENERATOR EXTENDED_SUDOKU
 
 echo "...compiling output"
 JAVA_FILES=`find ${OUTPUT} -name "*.java"`
 
 BINDIR="${OUTPUT}/bin"
+rm -r "${BINDIR}"
 mkdir -p ${BINDIR}
 javac -nowarn -d ${BINDIR} -cp ${BINDIR} ${JAVA_FILES}
  
