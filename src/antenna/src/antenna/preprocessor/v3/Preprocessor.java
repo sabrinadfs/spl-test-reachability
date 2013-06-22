@@ -23,6 +23,8 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Stack;
 import java.util.Vector;
 
@@ -330,6 +332,10 @@ public class Preprocessor {
     private boolean preprocessImpl(Vector lines, String encoding)
             throws IOException, PPException {
     	
+    	List<String> staticIfdefs = new ArrayList<String>();
+    	boolean staticIfdefsInserted = false;
+    	boolean isInterface = false;
+    	
         m_modified = false;
         m_statsStack = new Stack();
         m_currentState = STATE_NO_CONDITIONAL;
@@ -356,6 +362,25 @@ public class Preprocessor {
             		index = line.indexOf("}",index+1);
             		bracketCounter--;
             	}
+            }
+            if(line.contains(" interface")) { //not always precise, but should do the job
+            	isInterface = true;
+            }
+            //add notifications for ifdefs outside classes
+            if (bracketCounter > 0
+            		&& !staticIfdefsInserted
+            		&& !isInterface) {
+            	int old = i;
+            	staticIfdefsInserted = true;
+            	i++;
+        		lines.add(i,"static {\n");
+            	for (String notification : staticIfdefs) {
+            		i++;
+            		lines.add(i,notification);
+            	}
+            	i++;
+        		lines.add(i,"}\n");
+        		i = old;
             }
 
             PPLine lp = new PPLine(m_file, line, i);
@@ -471,13 +496,15 @@ public class Preprocessor {
 //                    		feature = tokens[j+1];
 //                    	}
 //                    	String notification = "driver.SubjectDriver.dr.notify(\"" + feature + "\");" ;
-                    	String notification = "System.out.println(\"" + feature + "\");" ;
+                    	String notification = "System.out.println(\"" + feature + "\");" ;	
                     	if(isBlind()) {
                     		notification = "//" + notification;
                     	}
                     	if(canAddNotification()) {
                     		i++;
                     		lines.insertElementAt(notification, i);
+                    	} else { //add the line when we enter in a class
+                    		staticIfdefs.add(notification);
                     	}
                     } else {
                         handleCommand(lines, lp, ast, eval, encoding,

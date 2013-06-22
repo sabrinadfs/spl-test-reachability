@@ -56,6 +56,7 @@ public class PreProcessorImpl {
 			try {
 				is = new FileInputStream(inPath);
 				String outPath = inPath.replace(inputPath, outputPath);
+				System.out.println("----------\n" + inPath);
 				if (outPath.equals(inPath)) {
 					System.out
 							.println("OUTPUT PATH EQUALS INPUT PATH. WILL REWRITE PROJECT");
