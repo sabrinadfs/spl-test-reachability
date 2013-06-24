@@ -24,7 +24,10 @@ import java.io.OutputStreamWriter;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.Stack;
 import java.util.Vector;
 
@@ -332,9 +335,9 @@ public class Preprocessor {
     private boolean preprocessImpl(Vector lines, String encoding)
             throws IOException, PPException {
     	
-    	List<String> staticIfdefs = new ArrayList<String>();
-    	boolean staticIfdefsInserted = false;
-    	boolean isInterface = false;
+//    	List<String> staticIfdefs = new ArrayList<String>();
+//    	boolean staticIfdefsInserted = false;
+//    	boolean isInterface = false;
     	
         m_modified = false;
         m_statsStack = new Stack();
@@ -363,25 +366,25 @@ public class Preprocessor {
             		bracketCounter--;
             	}
             }
-            if(line.contains(" interface")) { //not always precise, but should do the job
-            	isInterface = true;
-            }
+//            if(line.contains(" interface")) { //not always precise, but should do the job
+//            	isInterface = true;
+//            }
             //add notifications for ifdefs outside classes
-            if (bracketCounter > 0
-            		&& !staticIfdefsInserted
-            		&& !isInterface) {
-            	int old = i;
-            	staticIfdefsInserted = true;
-            	i++;
-        		lines.add(i,"static {\n");
-            	for (String notification : staticIfdefs) {
-            		i++;
-            		lines.add(i,notification);
-            	}
-            	i++;
-        		lines.add(i,"}\n");
-        		i = old;
-            }
+//            if (bracketCounter > 0
+//            		&& !staticIfdefsInserted
+//            		&& !isInterface) {
+//            	int old = i;
+//            	staticIfdefsInserted = true;
+//            	i++;
+//        		lines.add(i,"static {\n");
+//            	for (String notification : staticIfdefs) {
+//            		i++;
+//            		lines.add(i,notification);
+//            	}
+//            	i++;
+//        		lines.add(i,"}\n");
+//        		i = old;
+//            }
 
             PPLine lp = new PPLine(m_file, line, i);
 
@@ -480,7 +483,7 @@ public class Preprocessor {
 //                    } else if(ast.getType() == APPLexer.IFDEF) {
                     } else if(ast.getType() == APPLexer.IF || ast.getType() == APPLexer.IFDEF) { 
                     	handleCommand(lines, lp, ast, eval, encoding,
-                    			i + 1 == lines.size());
+                    			i + 1 == lines.size(), i);
                     	//Code below is to get the String after the #IFDEF statement.
                     	String feature = line; //TODO. Get the right feature from ast.
 //                    	String[] tokens = line.split(" ");
@@ -496,19 +499,19 @@ public class Preprocessor {
 //                    		feature = tokens[j+1];
 //                    	}
 //                    	String notification = "driver.SubjectDriver.dr.notify(\"" + feature + "\");" ;
-                    	String notification = "System.out.println(\"" + feature + "\");" ;	
+//                    	String notification = "System.out.println(\"" + feature + "\");" ;	
                     	if(isBlind()) {
-                    		notification = "//" + notification;
+//                    		notification = "//" + notification;
                     	}
                     	if(canAddNotification()) {
-                    		i++;
-                    		lines.insertElementAt(notification, i);
+//                    		i++;
+//                    		lines.insertElementAt(notification, i);
                     	} else { //add the line when we enter in a class
-                    		staticIfdefs.add(notification);
+//                    		staticIfdefs.add(notification);
                     	}
                     } else {
                         handleCommand(lines, lp, ast, eval, encoding,
-                                i + 1 == lines.size());
+                                i + 1 == lines.size(), i);
                     }
                 }
             } catch (IllegalStateException e) {
@@ -529,6 +532,12 @@ public class Preprocessor {
                     m_currentMdebugBlockStart);
         }
 
+        for (Scope scope : scopeList) {
+        	System.out.println(scope);
+        }
+        scopeStack.clear();
+        scopeList.clear();
+        
         return m_modified;
     }
 
@@ -687,10 +696,32 @@ public class Preprocessor {
 
     }
 
+    public static class Scope {
+    	public List<String> features;
+    	public int start;
+    	public int end;
+    	public boolean active;
+    	
+    	public Scope() {
+    		features = new LinkedList<String>();
+    		start = -1;
+    		end = -1;
+    		active = false;
+    	}
+    	
+    	public String toString() {
+			return "SCOPE:[" + start + "," + end + "," + active + "#"
+					+ features.toString() + "]";
+    	}
+    }
+    
+    private Stack<Scope> scopeStack = new Stack<Scope>();
+    private List<Scope> scopeList = new ArrayList<Scope>();
+    
     /**
      * Push a State into the stack.
      */
-    private void pushState() {
+    private void pushState() {    	
         m_statsStack.push(new Integer(m_currentState));
     }
 
@@ -751,55 +782,107 @@ public class Preprocessor {
     /**
      * Handles a new "IF"-like command. The old state is pushed on the stack, a
      * new "scope" is entered.
+     * @param lineNumber 
      */
-    private void handleIf(boolean condition) {
+    private void handleIf(boolean condition, int lineNumber, Set<String> symbols) {
         pushState();
+  
+        Scope scope = new Scope();
+        scope.start = lineNumber + 1;
+        scope.features.addAll(symbols);
+        
         if (!isBlind()) {
             if (condition) {
+            	scope.active = true;
                 m_currentState = STATE_IS_TRUE;
             } else {
+            	scope.active = false;
                 m_currentState = STATE_CAN_BECOME_TRUE;
             }
         } else {
+        	scope.active = false;
             m_currentState = STATE_HAS_BEEN_TRUE;
         }
+        
+        scopeList.add(scope);
+        scopeStack.push(scope);
     }
 
     /**
      * @param condition
+     * @param lineNumber 
      */
-    private void handleElseIf(boolean condition) {
+    private void handleElseIf(boolean condition, int lineNumber, Set<String> symbols) {
         if (m_currentState == STATE_NO_CONDITIONAL) {
             throw new IllegalStateException("Unexpected #elif");
-        } else if (m_currentState == STATE_CAN_BECOME_TRUE) {
-            if (condition) {
-                m_currentState = STATE_IS_TRUE;
-            }
-        } else if (m_currentState == STATE_IS_TRUE) {
-            m_currentState = STATE_HAS_BEEN_TRUE;
+        } else {
+        	Scope oldScope = scopeStack.pop();
+        	oldScope.end = lineNumber;
+        	
+        	//this statement depends on the features used in the current and the last definition
+        	Set<String> union = new HashSet<String>(symbols);
+   			union.addAll(oldScope.features); 
+        	
+        	Scope scope = new Scope();
+            scope.start = lineNumber;
+            scope.features.addAll(union);
+            
+        	if (m_currentState == STATE_CAN_BECOME_TRUE) {
+        		if (condition) {
+        			scope.active = true;
+        			m_currentState = STATE_IS_TRUE;
+        		} else {
+        			scope.active = false;
+        		}
+        	} else if (m_currentState == STATE_IS_TRUE) {
+        		scope.active = false;
+        		m_currentState = STATE_HAS_BEEN_TRUE;
+        	}
+        	
+            scopeList.add(scope);
+            scopeStack.push(scope);
         }
     }
 
     /**
+     * @param lineNumber 
      * 
      */
-    private void handleElse() {
+    private void handleElse(int lineNumber) {
         if (m_currentState == STATE_NO_CONDITIONAL) {
             throw new IllegalStateException("Unexpected #else");
-        } else if (m_currentState == STATE_CAN_BECOME_TRUE) {
-            m_currentState = STATE_IS_TRUE;
-        } else if (m_currentState == STATE_IS_TRUE) {
-            m_currentState = STATE_HAS_BEEN_TRUE;
+        } else {
+        	Scope oldScope = scopeStack.pop();
+        	oldScope.end = lineNumber;
+        	
+        	Scope scope = new Scope();
+            scope.start = lineNumber;
+            scope.features.addAll(oldScope.features);
+            
+			if (m_currentState == STATE_CAN_BECOME_TRUE) {
+				scope.active = true;
+				m_currentState = STATE_IS_TRUE;
+			} else if (m_currentState == STATE_IS_TRUE) {
+				scope.active = false;
+				m_currentState = STATE_HAS_BEEN_TRUE;
+			}
+			
+            scopeList.add(scope);
+            scopeStack.push(scope);
         }
     }
 
     /**
+     * @param lineNumber 
      * 
      */
-    private void handleEndIf() {
+    private void handleEndIf(int lineNumber) {
         if (m_currentState == STATE_NO_CONDITIONAL) {
             throw new IllegalStateException("Unexpected #endif");
         } else {
+          	Scope oldScope = scopeStack.pop();
+        	oldScope.end = lineNumber;
+        	
             popState();
         }
     }
@@ -816,7 +899,7 @@ public class Preprocessor {
      * @throws UnsupportedEncodingException
      */
     private void handleCommand(Vector lines, PPLine ppl, PPLineAST ast,
-            CommandEvaluator evaluator, String encoding, boolean lastLine)
+            CommandEvaluator evaluator, String encoding, boolean lastLine, int lineNumber)
             throws Exception, PPException, UnsupportedEncodingException {
 
         if (isVerbose()) {
@@ -839,7 +922,7 @@ public class Preprocessor {
         case APPLexer.IFDEF:
         case APPLexer.IFNDEF: {
             boolean r = evaluator.evaluate(ppl, ast, m_listener);
-            handleIf(r);
+            handleIf(r,lineNumber, getSymbols(ast));
             break;
         }
 
@@ -859,17 +942,17 @@ public class Preprocessor {
         case APPLexer.ELIFDEF:
         case APPLexer.ELIFNDEF: {
             boolean r = evaluator.evaluate(ppl, ast, m_listener);
-            handleElseIf(r);
+            handleElseIf(r,lineNumber, getSymbols(ast));
             break;
         }
 
         case APPLexer.ELSE: {
-            handleElse();
+            handleElse(lineNumber);
             break;
         }
 
         case APPLexer.ENDIF: {
-            handleEndIf();
+            handleEndIf(lineNumber);
             break;
         }
 
@@ -907,7 +990,11 @@ public class Preprocessor {
         }
     }
 
-    /**
+    private Set<String> getSymbols(PPLineAST ast) {
+		return SymbolExtractor.getSymbols(ast);
+	}
+
+	/**
      * @param ppl
      * @param lines
      */
