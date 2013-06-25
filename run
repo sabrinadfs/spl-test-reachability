@@ -15,7 +15,19 @@ cd src/antenna/
 ant compile_v3
 cd ../..
 #java -jar antenna.jar ${INPUT} ${OUTPUT} BASE STATES UNDO SOLVER GENERATOR EXTENDED_SUDOKU
-java -cp src/antenna/bin:src/antenna/lib/antlr-3.0.1.jar:src/antenna/lib/commons-io-1.0.jar main.PreProcessMain ${INPUT} ${OUTPUT} BASE STATES UNDO SOLVER GENERATOR EXTENDED_SUDOKU
+java -cp src/antenna/bin:src/antenna/lib/antlr-3.0.1.jar:src/antenna/lib/commons-io-1.0.jar main.PreProcessMain ${INPUT} ${OUTPUT} BASE STATES UNDO SOLVER GENERATOR EXTENDED_SUDOKU > log_features
+
+#split the output, one for each source file
+echo "... preparing inputs"
+python splitfiles.py log_features
+
+echo "...matching scopes to the syntatic tree"
+SOURCES=$(find $OUTPUT -name '*.java')
+for SRCFILE in $SOURCES 
+do
+	echo -e "\n$SRCFILE"
+	java -cp src/instrument/lib/javaparser-1.0.8.jar:src/instrument/bin main.Main "${SRCFILE}" "${SRCFILE}.scope"
+done
 
 echo "...compiling output"
 JAVA_FILES=`find ${OUTPUT} -name "*.java"`

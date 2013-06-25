@@ -21,9 +21,8 @@ public class PreProcessMain {
 		PreProcessorImpl preProcessor = new PreProcessorImpl(
 				subject_path, output_path);
 		
-		System.out.println(features.toString());
+//		System.out.println(features.toString());
 		
 		preProcessor.preProcess(features);
 	}
-
 }

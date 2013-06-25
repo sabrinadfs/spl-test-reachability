@@ -56,7 +56,7 @@ public class PreProcessorImpl {
 			try {
 				is = new FileInputStream(inPath);
 				String outPath = inPath.replace(inputPath, outputPath);
-				System.out.println("----------\n" + inPath);
+				System.out.println(outPath);
 				if (outPath.equals(inPath)) {
 					System.out
 							.println("OUTPUT PATH EQUALS INPUT PATH. WILL REWRITE PROJECT");
@@ -71,6 +71,8 @@ public class PreProcessorImpl {
 				OutputStream os = new FileOutputStream(file);
 //				System.out.println("===================================" + inPath);//remove later
 				p.preprocess(is, os, "utf-8");
+				
+				System.out.println("----------");
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
 			} catch (IOException e) {
@@ -99,7 +101,7 @@ public class PreProcessorImpl {
 			String pathFile = currentFile.getPath();
 			String fileName = currentFile.getName();
 			if (currentFile.isFile() && fileName.endsWith(".java")) {
-				System.out.println(path + "/" + fileName);
+//				System.out.println(path + "/" + fileName);
 				javaFilePaths.add(path + "/" + fileName);
 			} else if (currentFile.isDirectory()) {
 				getAllJavaFiles(path + "/" + fileName);
