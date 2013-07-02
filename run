@@ -15,7 +15,7 @@ cd src/antenna/
 ant compile_v3
 cd ../..
 #java -jar antenna.jar ${INPUT} ${OUTPUT} BASE STATES UNDO SOLVER GENERATOR EXTENDED_SUDOKU
-java -cp src/antenna/bin:src/antenna/lib/antlr-3.0.1.jar:src/antenna/lib/commons-io-1.0.jar main.PreProcessMain ${INPUT} ${OUTPUT} BASE STATES UNDO SOLVER GENERATOR EXTENDED_SUDOKU > log_features
+java -cp src/antenna/bin:src/antenna/lib/antlr-3.0.1.jar:src/antenna/lib/commons-io-1.0.jar main.PreProcessMain ${INPUT} ${OUTPUT} BASE STATES > log_features
 
 #split the output, one for each source file
 echo "... preparing inputs"
@@ -23,6 +23,18 @@ python splitfiles.py log_features
 
 echo "...matching scopes to the syntatic tree"
 SOURCES=$(find $OUTPUT -name '*.java')
+
+echo "=============================="
+echo "${SOURCES}"
+echo "=============================="
+
+INSTRUMENT_BIN="${BASEDIR}/src/instrument/bin"
+INSTRUMENT_SRC="${BASEDIR}/src/instrument/src"
+JAVA_FILES_INSTRUMENT=`find ${INSTRUMENT_SRC} -name "*.java"`
+INSTRUMENT_LIB="${BASEDIR}/src/instrument/lib"
+CP="${INSTRUMENT_BIN}:${INSTRUMENT_LIB}/javaparser-1.0.8.jar"
+javac -nowarn -d ${INSTRUMENT_BIN} -cp ${CP} ${JAVA_FILES_INSTRUMENT}
+
 for SRCFILE in $SOURCES 
 do
 	echo -e "\n$SRCFILE"
@@ -37,8 +49,8 @@ rm -r "${BINDIR}"
 mkdir -p ${BINDIR}
 javac -nowarn -d ${BINDIR} -cp ${BINDIR} ${JAVA_FILES}
  
-#echo "...compiling test"
-#javac -d ${BINDIR} -sourcepath src -cp ${BINDIR} ${TEST_CLASS}
+echo "...compiling test"
+javac -d ${BINDIR} -sourcepath src -cp ${BINDIR} ${TEST_CLASS}
 
 echo "...running test"
 java -cp ${BINDIR} ${TEST_PATH} 2 > ${OUTPUT}/log_test2.txt
